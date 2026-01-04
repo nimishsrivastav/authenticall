@@ -1,0 +1,61 @@
+{
+  "manifest_version": 3,
+  "name": "Authenticall",
+  "version": "1.0.0",
+  "description": "Real-time deepfake and social engineering detection for video conferences",
+  "author": "Nimish Srivastav",
+
+  "action": {
+    "default_popup": "extension/public/popup.html",
+    "default_title": "Authenticall - Deepfake Detection"
+  },
+
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://meet.google.com/*",
+        "https://*.zoom.us/*",
+        "https://teams.microsoft.com/*"
+      ],
+      "js": ["content/content-script.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications",
+    "activeTab"
+  ],
+
+  "optional_permissions": [
+    "tabCapture"
+  ],
+
+  "host_permissions": [
+    "https://meet.google.com/*",
+    "https://*.zoom.us/*",
+    "https://teams.microsoft.com/*",
+    "https://generativelanguage.googleapis.com/*"
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://generativelanguage.googleapis.com"
+  },
+
+  "minimum_chrome_version": "109"
+}

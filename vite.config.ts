@@ -22,7 +22,7 @@ export default defineConfig({
     
     rollupOptions: {
       input: {
-        popup: resolve(__dirname, 'extension/src/popup/popup.html'),
+        popup: resolve(__dirname, 'extension/public/popup.html'),
         'service-worker': resolve(__dirname, 'extension/src/background/service-worker.ts'),
         'content-script': resolve(__dirname, 'extension/src/content/content-script.ts'),
       },
