@@ -1,0 +1,72 @@
+{
+  "name": "authenticall-gemini-hackathon",
+  "version": "1.0.0",
+  "description": "Real-time deepfake & social engineering detector for video calls. Gemini 3 analyzes audio-visual streams & conversation intent to flag impersonation attacks before damage occurs.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --ext ts,tsx --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,json,md}\"",
+    "type-check": "tsc --noEmit",
+    "package": "npm run build && node scripts/package.js",
+    "clean": "rm -rf dist node_modules",
+    "prepare": "npm run type-check"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nimishsrivastav/authenticall"
+  },
+  "keywords": [
+    "chrome-extension",
+    "deepfake-detection",
+    "gemini-api",
+    "ai-security",
+    "video-conference",
+    "social-engineering"
+  ],
+  "author": "Nimish Srivastav",
+  "license": "MIT",
+  "dependencies": {
+    "@google/genai": "^1.34.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "zod": "^4.3.5",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.1",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/chrome": "^0.1.32",
+    "@types/node": "^25.0.3",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.51.0",
+    "@typescript-eslint/parser": "^8.51.0",
+    "@vitejs/plugin-react": "^5.1.2",
+    "@vitest/coverage-v8": "^4.0.16",
+    "@vitest/ui": "^4.0.16",
+    "autoprefixer": "^10.4.23",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "happy-dom": "^20.0.11",
+    "postcss": "^8.5.6",
+    "prettier": "^3.7.4",
+    "tailwindcss": "^4.1.18",
+    "terser": "^5.44.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.0",
+    "vitest": "^4.0.16"
+  }
+}
