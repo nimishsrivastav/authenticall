@@ -292,7 +292,7 @@ export class MessageHandler {
 
       // Save to storage
       await chrome.storage.sync.set({
-        vibecheck_settings: this.state.settings,
+        authenticall_settings: this.state.settings,
       });
 
       console.log('[MessageHandler] Settings updated');

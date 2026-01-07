@@ -1,6 +1,6 @@
 /**
  * Background Service Worker
- * Main background script for VibeCheck AI extension
+ * Main background script for Authenticall AI extension
  * Handles message routing, state management, and API orchestration
  */
 
@@ -49,7 +49,7 @@ let alarmScheduler: AlarmScheduler;
  * Initialize the extension
  */
 async function initialize(): Promise<void> {
-  console.log('[VibeCheck AI] Initializing background service worker...');
+  console.log('[Authenticall] Initializing background service worker...');
 
   try {
     // Load settings from storage
@@ -66,9 +66,9 @@ async function initialize(): Promise<void> {
     // Set up event listeners
     setupEventListeners();
 
-    console.log('[VibeCheck AI] Initialization complete');
+    console.log('[Authenticall] Initialization complete');
   } catch (error) {
-    console.error('[VibeCheck AI] Initialization failed:', error);
+    console.error('[Authenticall] Initialization failed:', error);
   }
 }
 
@@ -83,14 +83,14 @@ async function loadSettings(): Promise<void> {
         ...DEFAULT_SETTINGS,
         ...(result[STORAGE_KEYS.SETTINGS] as Partial<ExtensionSettings>),
       };
-      console.log('[VibeCheck AI] Settings loaded from storage');
+      console.log('[Authenticall] Settings loaded from storage');
     } else {
       // Save default settings
       await saveSettings();
-      console.log('[VibeCheck AI] Default settings saved');
+      console.log('[Authenticall] Default settings saved');
     }
   } catch (error) {
-    console.error('[VibeCheck AI] Failed to load settings:', error);
+    console.error('[Authenticall] Failed to load settings:', error);
     extensionState.settings = DEFAULT_SETTINGS;
   }
 }
@@ -103,9 +103,9 @@ async function saveSettings(): Promise<void> {
     await chrome.storage.sync.set({
       [STORAGE_KEYS.SETTINGS]: extensionState.settings,
     });
-    console.log('[VibeCheck AI] Settings saved to storage');
+    console.log('[Authenticall] Settings saved to storage');
   } catch (error) {
-    console.error('[VibeCheck AI] Failed to save settings:', error);
+    console.error('[Authenticall] Failed to save settings:', error);
   }
 }
 
@@ -115,7 +115,7 @@ async function saveSettings(): Promise<void> {
 function setupEventListeners(): void {
   // Handle extension installation or update
   chrome.runtime.onInstalled.addListener((details) => {
-    console.log('[VibeCheck AI] Extension installed/updated:', details.reason);
+    console.log('[Authenticall] Extension installed/updated:', details.reason);
     
     if (details.reason === 'install') {
       // First time installation
@@ -128,7 +128,7 @@ function setupEventListeners(): void {
 
   // Handle browser startup
   chrome.runtime.onStartup.addListener(() => {
-    console.log('[VibeCheck AI] Browser started, reinitializing...');
+    console.log('[Authenticall] Browser started, reinitializing...');
     initialize();
   });
 
@@ -149,7 +149,7 @@ function setupEventListeners(): void {
  * Handle first installation
  */
 function handleFirstInstall(): void {
-  console.log('[VibeCheck AI] First installation detected');
+  console.log('[Authenticall] First installation detected');
   
   // Open welcome page or setup wizard (optional)
   // chrome.tabs.create({ url: 'welcome.html' });
@@ -158,7 +158,7 @@ function handleFirstInstall(): void {
   chrome.notifications.create({
     type: 'basic',
     iconUrl: 'icons/icon128.png',
-    title: 'VibeCheck AI Installed',
+    title: 'Authenticall AI Installed',
     message: 'Welcome! Click the extension icon to get started.',
     priority: 1,
   });
@@ -168,7 +168,7 @@ function handleFirstInstall(): void {
  * Handle extension update
  */
 function handleUpdate(previousVersion?: string): void {
-  console.log('[VibeCheck AI] Updated from version:', previousVersion);
+  console.log('[Authenticall] Updated from version:', previousVersion);
   
   // Perform any necessary migration or cleanup
   // For example, migrate old storage format to new one
@@ -185,7 +185,7 @@ function handleTabUpdate(tabId: number, url: string): void {
     url.includes('teams.microsoft.com');
 
   if (isSupportedPlatform) {
-    console.log('[VibeCheck AI] Detected video conference platform:', url);
+    console.log('[Authenticall] Detected video conference platform:', url);
     
     // Update badge to show extension is ready
     chrome.action.setBadgeText({ text: '●', tabId });
@@ -197,7 +197,7 @@ function handleTabUpdate(tabId: number, url: string): void {
  * Handle tab removal
  */
 function handleTabRemoved(tabId: number): void {
-  console.log('[VibeCheck AI] Tab removed:', tabId);
+  console.log('[Authenticall] Tab removed:', tabId);
   
   // Clean up any state associated with this tab
   if (extensionState.monitoring.currentSession) {
@@ -237,5 +237,5 @@ initialize();
 // Make state accessible for debugging in development
 if (extensionState.settings.enableDebugMode) {
   // @ts-expect-error - Adding to globalThis for debugging
-  globalThis.vibeCheckState = getExtensionState;
+  globalThis.authenticallState = getExtensionState;
 }

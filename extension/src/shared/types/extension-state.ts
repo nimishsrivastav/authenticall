@@ -185,9 +185,9 @@ export const DEFAULT_TRUST_SCORE: TrustScoreSnapshot = {
  * Storage keys for Chrome storage
  */
 export const STORAGE_KEYS = {
-  SETTINGS: 'vibecheck_settings',
-  SESSION_HISTORY: 'vibecheck_session_history',
-  STATISTICS: 'vibecheck_statistics',
-  ALERT_HISTORY: 'vibecheck_alert_history',
-  CACHE: 'vibecheck_cache',
+  SETTINGS: 'authenticall_settings',
+  SESSION_HISTORY: 'authenticall_session_history',
+  STATISTICS: 'authenticall_statistics',
+  ALERT_HISTORY: 'authenticall_alert_history',
+  CACHE: 'authenticall_cache',
 } as const;

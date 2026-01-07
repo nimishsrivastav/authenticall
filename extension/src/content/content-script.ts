@@ -5,9 +5,10 @@
  */
 
 import { detectPlatform, getPlatformName } from '../shared/constants';
-import { MessageType, Platform } from '../shared/types';
+import { MessageType, Platform, DEFAULT_SETTINGS } from '../shared/types';
 import { InjectionManager } from './injection-manager';
 import { PlatformDetector } from './platform-detector';
+import { StreamManager } from '../capture/stream-manager';
 
 /**
  * Content script state
@@ -17,6 +18,7 @@ interface ContentScriptState {
   isMonitoring: boolean;
   injectionManager?: InjectionManager;
   platformDetector?: PlatformDetector;
+  streamManager?: StreamManager;
 }
 
 const state: ContentScriptState = {
@@ -102,7 +104,18 @@ async function handleStartMonitoring(): Promise<{ success: boolean }> {
       return { success: true }; // Already monitoring
     }
 
-    // Start platform detection and stream capture
+    // Initialize stream manager
+    state.streamManager = new StreamManager({
+      platform: state.platform,
+      videoFps: DEFAULT_SETTINGS.captureSettings.videoFps,
+      audioDuration: DEFAULT_SETTINGS.captureSettings.audioDuration,
+      maxConcurrentRequests: DEFAULT_SETTINGS.captureSettings.maxConcurrentRequests,
+    });
+
+    // Start stream capture
+    await state.streamManager.start();
+
+    // Start platform detection and injection
     state.platformDetector?.start();
     state.injectionManager?.start();
 
@@ -127,7 +140,10 @@ async function handleStopMonitoring(): Promise<{ success: boolean }> {
       return { success: true }; // Already stopped
     }
 
-    // Stop platform detection and stream capture
+    // Stop stream capture
+    await state.streamManager?.stop();
+    
+    // Stop platform detection and injection
     state.platformDetector?.stop();
     state.injectionManager?.stop();
 

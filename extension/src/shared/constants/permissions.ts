@@ -126,9 +126,9 @@ export const NOTIFICATION_CONFIG = {
 export const EXTENSION_URLS = {
   OPTIONS: 'options.html',
   POPUP: 'popup.html',
-  PRIVACY_POLICY: 'https://vibecheck.ai/privacy',
-  SUPPORT: 'https://vibecheck.ai/support',
-  GITHUB: 'https://github.com/yourusername/vibecheck-ai',
+  PRIVACY_POLICY: 'https://authenticall.ai/privacy',
+  SUPPORT: 'https://authenticall.ai/support',
+  GITHUB: 'https://github.com/yourusername/authenticall-ai',
 } as const;
 
 /**

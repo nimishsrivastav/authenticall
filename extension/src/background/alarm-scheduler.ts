@@ -75,8 +75,8 @@ export class AlarmScheduler {
     console.log('[AlarmScheduler] Cleaning up cache...');
 
     try {
-      const result = await chrome.storage.local.get('vibecheck_cache');
-      const cache: Record<string, any> = result.vibecheck_cache || {};
+      const result = await chrome.storage.local.get('authenticall_cache');
+      const cache: Record<string, any> = result.authenticall_cache || {};
       const now = Date.now();
       let cleanedCount = 0;
 
@@ -90,7 +90,7 @@ export class AlarmScheduler {
 
       // Save cleaned cache
       if (cleanedCount > 0) {
-        await chrome.storage.local.set({ vibecheck_cache: cache });
+        await chrome.storage.local.set({ authenticall_cache: cache });
         console.log(`[AlarmScheduler] Cleaned ${cleanedCount} cache entries`);
       }
     } catch (error) {
@@ -130,7 +130,7 @@ export class AlarmScheduler {
         chrome.notifications.create({
           type: 'basic',
           iconUrl: 'icons/icon128.png',
-          title: 'VibeCheck AI',
+          title: 'Authenticall AI',
           message: 'Please configure your Gemini API key in settings',
           priority: 1,
         });
