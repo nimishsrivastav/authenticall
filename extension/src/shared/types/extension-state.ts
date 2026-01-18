@@ -149,9 +149,11 @@ export interface ExtensionSettings {
 /**
  * Default extension settings
  */
+
+
 export const DEFAULT_SETTINGS: ExtensionSettings = {
-  apiKey: '',
-  geminiModel: 'gemini-3-flash',
+  apiKey: import.meta.env.VITE_GEMINI_API_KEY || '',
+  geminiModel: 'gemini-2.5-flash',
   enableNotifications: true,
   notificationSound: true,
   trustThresholds: {
@@ -167,6 +169,8 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   enableTelemetry: false,
   enableDebugMode: false,
 };
+
+console.log('Extension State:', DEFAULT_SETTINGS);
 
 /**
  * Default trust score
