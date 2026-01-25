@@ -1,6 +1,7 @@
 /**
  * Analysis Orchestrator
  * Coordinates analysis workflow between capture and Gemini API
+ * Integrates with Phase 5 TrustScoringService for advanced scoring and alerts
  */
 
 import { getGeminiService, GeminiService } from '../api/gemini-service';
@@ -11,9 +12,16 @@ import {
   ExtensionSettings,
   TrustScoreSnapshot,
   Alert,
+  Platform,
 } from '../shared/types';
 import { getErrorBoundary } from '../utils/error-boundary';
 import { ErrorCode } from '../shared/constants';
+import {
+  TrustScoringService,
+  getTrustScoringService,
+} from '../services/trust-scoring-service';
+import { VisualAnalysisResult } from '../analysis/visual-analyzer';
+import { BehavioralAnalysisResult } from '../analysis/behavioral-analyzer';
 
 export interface AnalysisJob {
   id: string;
@@ -26,14 +34,17 @@ export interface AnalysisJob {
 
 export class AnalysisOrchestrator {
   private geminiService: GeminiService;
+  private trustScoringService: TrustScoringService;
   private isRunning: boolean = false;
   private jobs: Map<string, AnalysisJob> = new Map();
   private pendingFrames: Array<{ data: string; timestamp: number }> = [];
   private analysisInterval?: number;
-//   private batchSize: number = 3;
+  private lastVisualResult?: VisualAnalysisResult;
+  private lastBehavioralResult?: BehavioralAnalysisResult;
 
   constructor(settings: ExtensionSettings) {
     this.geminiService = getGeminiService(settings);
+    this.trustScoringService = getTrustScoringService();
   }
 
   /**
@@ -46,12 +57,33 @@ export class AnalysisOrchestrator {
       // Initialize Gemini service
       await this.geminiService.initialize();
 
+      // Initialize Trust Scoring Service
+      await this.trustScoringService.initialize();
+
       console.log('[AnalysisOrchestrator] Initialized successfully');
     } catch (error) {
       const errorBoundary = getErrorBoundary();
       errorBoundary.handleError(ErrorCode.INITIALIZATION_FAILED, error, false);
       throw error;
     }
+  }
+
+  /**
+   * Start monitoring session
+   */
+  public async startSession(
+    platform: Platform,
+    url: string,
+    participantCount: number = 1,
+  ): Promise<void> {
+    await this.trustScoringService.startSession(platform, url, participantCount);
+  }
+
+  /**
+   * End monitoring session
+   */
+  public async endSession(): Promise<void> {
+    await this.trustScoringService.endSession();
   }
 
   /**
@@ -152,12 +184,20 @@ export class AnalysisOrchestrator {
         'high',
       );
 
+      // Store for fusion analysis
+      this.lastBehavioralResult = result;
+
       // Update job
       job.status = 'completed';
       job.completedAt = Date.now();
 
+      // Process through TrustScoringService
+      const { score, alerts } = await this.trustScoringService.processAnalysisResults({
+        behavioral: result,
+      });
+
       // Broadcast results
-      await this.broadcastAnalysisResults(undefined, result);
+      await this.broadcastScoringResults(score, alerts);
     } catch (error) {
       console.error('[AnalysisOrchestrator] Transcript analysis failed:', error);
       job.status = 'failed';
@@ -197,17 +237,25 @@ export class AnalysisOrchestrator {
     this.jobs.set(job.id, job);
 
     try {
-      // Perform fusion analysis (combines latest visual + recent behavioral)
-      const result = await this.geminiService.performFusionAnalysis(
-        latestFrame.data,
-      );
+      // Perform visual analysis
+      const visualResult = await this.geminiService.analyzeFrame(latestFrame.data);
+      this.lastVisualResult = visualResult;
 
       // Update job
       job.status = 'completed';
       job.completedAt = Date.now();
 
+      // Process through TrustScoringService with both visual and last behavioral
+      const analysisInput: { visual?: VisualAnalysisResult; behavioral?: BehavioralAnalysisResult } = {
+        visual: this.lastVisualResult,
+      };
+      if (this.lastBehavioralResult) {
+        analysisInput.behavioral = this.lastBehavioralResult;
+      }
+      const { score, alerts } = await this.trustScoringService.processAnalysisResults(analysisInput);
+
       // Broadcast results
-      await this.broadcastFusionResults(result);
+      await this.broadcastScoringResults(score, alerts);
 
       // Clear processed frames
       this.pendingFrames = [];
@@ -222,58 +270,22 @@ export class AnalysisOrchestrator {
   }
 
   /**
-   * Broadcast analysis results to popup
+   * Broadcast scoring results from TrustScoringService
    */
-  private async broadcastAnalysisResults(
-    visual?: { trustScore: number; confidence: number },
-    behavioral?: { trustScore: number; confidence: number },
+  private async broadcastScoringResults(
+    score: TrustScoreSnapshot,
+    alerts: Alert[],
   ): Promise<void> {
     try {
       // Send trust score update
       await chrome.runtime.sendMessage({
         type: MessageType.TRUST_SCORE_UPDATE,
         timestamp: Date.now(),
-        trustScore: {
-          overall: Math.round(
-            ((visual?.trustScore ?? 75) + (behavioral?.trustScore ?? 75)) / 2,
-          ),
-          visual: visual?.trustScore ?? 0,
-          audio: 75, // Placeholder
-          behavioral: behavioral?.trustScore ?? 0,
-          confidence: Math.max(
-            visual?.confidence ?? 0,
-            behavioral?.confidence ?? 0,
-          ),
-          level: this.determineTrustLevel(
-            Math.round(
-              ((visual?.trustScore ?? 75) + (behavioral?.trustScore ?? 75)) / 2,
-            ),
-          ),
-        },
-      });
-    } catch (error) {
-      console.error('[AnalysisOrchestrator] Failed to broadcast results:', error);
-    }
-  }
-
-  /**
-   * Broadcast fusion results
-   */
-  private async broadcastFusionResults(result: {
-    trustScore: TrustScoreSnapshot;
-    alerts: Alert[];
-    summary: string;
-  }): Promise<void> {
-    try {
-      // Send trust score update
-      await chrome.runtime.sendMessage({
-        type: MessageType.TRUST_SCORE_UPDATE,
-        timestamp: Date.now(),
-        trustScore: result.trustScore,
+        trustScore: score,
       });
 
       // Send alerts
-      for (const alert of result.alerts) {
+      for (const alert of alerts) {
         await chrome.runtime.sendMessage({
           type: MessageType.ALERT_TRIGGERED,
           timestamp: Date.now(),
@@ -287,48 +299,10 @@ export class AnalysisOrchestrator {
             actionRequired: alert.actionRequired,
           },
         });
-
-        // Show browser notification if enabled
-        if (alert.severity === 'high' || alert.severity === 'critical') {
-          await this.showNotification(alert);
-        }
       }
     } catch (error) {
-      console.error(
-        '[AnalysisOrchestrator] Failed to broadcast fusion results:',
-        error,
-      );
+      console.error('[AnalysisOrchestrator] Failed to broadcast scoring results:', error);
     }
-  }
-
-  /**
-   * Show browser notification
-   */
-  private async showNotification(alert: Alert): Promise<void> {
-    try {
-      await chrome.notifications.create(alert.id, {
-        type: 'basic',
-        iconUrl: 'icons/icon128.png',
-        title: alert.title,
-        message: alert.message,
-        priority: alert.severity === 'critical' ? 2 : 1,
-        requireInteraction: alert.actionRequired,
-      });
-    } catch (error) {
-      console.error('[AnalysisOrchestrator] Failed to show notification:', error);
-    }
-  }
-
-  /**
-   * Determine trust level
-   */
-  private determineTrustLevel(
-    score: number,
-  ): 'safe' | 'caution' | 'danger' | 'unknown' {
-    if (score >= 85) return 'safe';
-    if (score >= 50) return 'caution';
-    if (score >= 0) return 'danger';
-    return 'unknown';
   }
 
   /**
@@ -401,5 +375,47 @@ export class AnalysisOrchestrator {
    */
   public getServiceStats(): ReturnType<typeof this.geminiService.getStats> {
     return this.geminiService.getStats();
+  }
+
+  /**
+   * Get trust scoring statistics
+   */
+  public getTrustScoringStats(): ReturnType<typeof this.trustScoringService.getSessionStatistics> {
+    return this.trustScoringService.getSessionStatistics();
+  }
+
+  /**
+   * Get current trust score
+   */
+  public getCurrentTrustScore(): TrustScoreSnapshot | null {
+    return this.trustScoringService.getCurrentScore();
+  }
+
+  /**
+   * Get active alerts
+   */
+  public getActiveAlerts(): Alert[] {
+    return this.trustScoringService.getActiveAlerts();
+  }
+
+  /**
+   * Dismiss an alert
+   */
+  public dismissAlert(alertId: string): boolean {
+    return this.trustScoringService.dismissAlert(alertId);
+  }
+
+  /**
+   * Check if session is active
+   */
+  public isSessionActive(): boolean {
+    return this.trustScoringService.isSessionActive();
+  }
+
+  /**
+   * Get trust scoring service
+   */
+  public getTrustScoringService(): TrustScoringService {
+    return this.trustScoringService;
   }
 }
