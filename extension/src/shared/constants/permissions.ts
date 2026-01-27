@@ -37,8 +37,8 @@ export const GEMINI_API = {
     STREAM_CONTENT: 'models/{model}:streamGenerateContent',
   },
   MODELS: {
-    FLASH: 'gemini-2.5-flash',  // ✅ FIXED: Was gemini-3-flash
-    PRO: 'gemini-2.5-pro',      // ✅ FIXED: Was gemini-3-pro
+    FLASH: 'gemini-3-flash-preview',  // ✅ FIXED: Was gemini-3-flash-preview
+    PRO: 'gemini-3-pro',      // ✅ FIXED: Was gemini-3-pro
   },
   TIMEOUT: 30000, // 30 seconds
   MAX_RETRIES: 3,

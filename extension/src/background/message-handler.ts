@@ -17,9 +17,11 @@ import {
   ExtensionState,
   MonitoringState,
 } from '../shared/types';
+import { AnalysisOrchestrator } from './analysis-orchestrator';
 
 export class MessageHandler {
   private state: ExtensionState;
+  private analysisOrchestrator: AnalysisOrchestrator | null = null;
 
   constructor(state: ExtensionState) {
     this.state = state;
@@ -123,6 +125,13 @@ export class MessageHandler {
         chrome.action.setBadgeBackgroundColor({ color: '#10b981', tabId: sender.tab.id });
       }
 
+      // Initialize orchestrator
+      if (!this.analysisOrchestrator) {
+        this.analysisOrchestrator = new AnalysisOrchestrator(this.state.settings);
+        await this.analysisOrchestrator.initialize();
+        this.analysisOrchestrator.start();
+      }
+
       console.log('[MessageHandler] Monitoring started');
 
       return {
@@ -133,6 +142,11 @@ export class MessageHandler {
       };
     } catch (error) {
       console.error('[MessageHandler] Failed to start monitoring:', error);
+      // Clean up orchestrator if failed
+      if (this.analysisOrchestrator) {
+        await this.analysisOrchestrator.stop();
+        this.analysisOrchestrator = null;
+      }
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to start monitoring',
@@ -158,6 +172,9 @@ export class MessageHandler {
       // Clear badge
       chrome.action.setBadgeText({ text: '' });
 
+      // Stop orchestrator
+      await this.stopSession();
+
       console.log('[MessageHandler] Monitoring stopped');
 
       return { success: true };
@@ -167,6 +184,16 @@ export class MessageHandler {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to stop monitoring',
       };
+    }
+  }
+
+  /**
+   * Stop the current session and clean up resources
+   */
+  public async stopSession(): Promise<void> {
+    if (this.analysisOrchestrator) {
+      await this.analysisOrchestrator.stop();
+      this.analysisOrchestrator = null;
     }
   }
 
@@ -184,7 +211,10 @@ export class MessageHandler {
         this.state.statistics.currentSession.framesAnalyzed++;
       }
 
-      // TODO: Queue frame for analysis (will be implemented in Phase 4)
+      // Queue frame for analysis
+      if (this.analysisOrchestrator) {
+        await this.analysisOrchestrator.handleFrameCaptured(message);
+      }
 
       return { success: true };
     } catch (error) {
@@ -236,7 +266,10 @@ export class MessageHandler {
         this.state.statistics.currentSession.transcriptsProcessed++;
       }
 
-      // TODO: Queue transcript for analysis (will be implemented in Phase 4)
+      // Queue transcript for analysis
+      if (this.analysisOrchestrator) {
+        await this.analysisOrchestrator.handleTranscriptCaptured(message);
+      }
 
       return { success: true };
     } catch (error) {
@@ -263,8 +296,14 @@ export class MessageHandler {
           state: this.state.monitoring.state,
           currentSession: this.state.monitoring.currentSession,
         },
-        trustScore: this.state.trustScore.current,
-        alerts: this.state.alerts.active,
+        trustScore: {
+          current: this.state.trustScore.current,
+          history: this.state.trustScore.history || [],
+        },
+        alerts: {
+          active: this.state.alerts.active,
+          history: this.state.alerts.history || [],
+        },
         statistics: this.state.statistics,
         settings: {
           // Don't send API key to popup

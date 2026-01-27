@@ -397,7 +397,7 @@ global.fetch = vi.fn(() =>
 
 beforeAll(() => {
   // Mock environment variables
-  process.env.VITE_GEMINI_MODEL = 'gemini-2.5-flash';
+  process.env.VITE_GEMINI_MODEL = 'gemini-3-flash-preview';
   process.env.VITE_TRUST_THRESHOLD_SAFE = '85';
   process.env.VITE_TRUST_THRESHOLD_CAUTION = '50';
 

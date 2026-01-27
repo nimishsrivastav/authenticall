@@ -121,6 +121,14 @@ async function handleStartMonitoring(): Promise<{ success: boolean }> {
 
     state.isMonitoring = true;
 
+    // Notify background script that monitoring has started
+    chrome.runtime.sendMessage({
+      type: MessageType.START_MONITORING,
+      platform: state.platform,
+      url: window.location.href,
+      timestamp: Date.now(),
+    });
+
     console.log('[ContentScript] Monitoring started');
     return { success: true };
   } catch (error) {
@@ -142,12 +150,18 @@ async function handleStopMonitoring(): Promise<{ success: boolean }> {
 
     // Stop stream capture
     await state.streamManager?.stop();
-    
+
     // Stop platform detection and injection
     state.platformDetector?.stop();
     state.injectionManager?.stop();
 
     state.isMonitoring = false;
+
+    // Notify background script that monitoring has stopped
+    chrome.runtime.sendMessage({
+      type: MessageType.STOP_MONITORING,
+      timestamp: Date.now(),
+    });
 
     console.log('[ContentScript] Monitoring stopped');
     return { success: true };

@@ -50,7 +50,7 @@ export class BehavioralAnalyzer {
   }> = [];
   private maxHistoryLength: number = 50;
 
-  constructor(geminiClient: GeminiClient, model: string = 'gemini-2.5-flash') {
+  constructor(geminiClient: GeminiClient, model: string = 'gemini-3-flash-preview') {
     this.geminiClient = geminiClient;
     this.model = model;
   }

@@ -153,7 +153,7 @@ export interface ExtensionSettings {
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
   apiKey: import.meta.env.VITE_GEMINI_API_KEY || '',
-  geminiModel: 'gemini-2.5-flash',
+  geminiModel: 'gemini-3-flash-preview',
   enableNotifications: true,
   notificationSound: true,
   trustThresholds: {

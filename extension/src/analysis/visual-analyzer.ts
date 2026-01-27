@@ -25,7 +25,7 @@ export class VisualAnalyzer {
   private geminiClient: GeminiClient;
   private model: string;
 
-  constructor(geminiClient: GeminiClient, model: string = 'gemini-2.5-flash') {
+  constructor(geminiClient: GeminiClient, model: string = 'gemini-3-flash-preview') {
     this.geminiClient = geminiClient;
     this.model = model;
   }

@@ -6,7 +6,6 @@
 
 import { MessageHandler } from './message-handler';
 import { AlarmScheduler } from './alarm-scheduler';
-import { AnalysisOrchestrator } from './analysis-orchestrator';
 import { 
   ExtensionState, 
   MonitoringState, 
@@ -14,8 +13,10 @@ import {
   DEFAULT_TRUST_SCORE, 
   STORAGE_KEYS, 
   ExtensionSettings,
-  MessageType
+  TrustScoreSnapshot,
+  Alert
 } from '../shared/types';
+import { getTrustScoringService } from '../services/trust-scoring-service';
 
 /**
  * Global extension state
@@ -49,7 +50,6 @@ let extensionState: ExtensionState = {
  */
 let messageHandler: MessageHandler;
 let alarmScheduler: AlarmScheduler;
-let analysisOrchestrator: AnalysisOrchestrator | null = null;
 
 /**
  * Initialize the extension
@@ -71,6 +71,43 @@ async function initialize(): Promise<void> {
 
     // Set up event listeners
     setupEventListeners();
+
+    // Subscribe to trust scoring updates
+    const trustScoringService = getTrustScoringService();
+    trustScoringService.addListener((score: TrustScoreSnapshot, alerts: Alert[]) => {
+      extensionState.trustScore.current = score;
+      
+      // Update alerts
+      // Add new alerts to active list if they don't exist
+      for (const alert of alerts) {
+        if (!extensionState.alerts.active.some(a => a.id === alert.id)) {
+          extensionState.alerts.active.push(alert);
+          extensionState.alerts.history.push(alert);
+        }
+      }
+      
+      // Update trust score history
+      extensionState.trustScore.history.push(score);
+      
+      // Update statistics
+      if (extensionState.statistics.currentSession) {
+         // Recalculate average
+         const totalScore = extensionState.trustScore.history.reduce((sum, s) => sum + s.overall, 0);
+         extensionState.statistics.currentSession.averageTrustScore = Math.round(totalScore / extensionState.trustScore.history.length);
+         
+         // Update min/max
+         extensionState.statistics.currentSession.minTrustScore = Math.min(
+           extensionState.statistics.currentSession.minTrustScore, 
+           score.overall
+         );
+         extensionState.statistics.currentSession.maxTrustScore = Math.max(
+           extensionState.statistics.currentSession.maxTrustScore, 
+           score.overall
+         );
+      }
+      
+      console.log('[Authenticall] Updated global state with new trust score:', score.overall);
+    });
 
     console.log('[Authenticall] Initialization complete');
   } catch (error) {
@@ -115,45 +152,6 @@ async function saveSettings(): Promise<void> {
   }
 }
 
-/**
- * Initialize Analysis Orchestrator (Phase 4)
- */
-async function initializeAnalysisOrchestrator(): Promise<void> {
-  if (analysisOrchestrator) {
-    console.warn('[Authenticall] Analysis orchestrator already initialized');
-    return;
-  }
-
-  if (!extensionState.settings.apiKey) {
-    console.warn('[Authenticall] Cannot initialize analysis orchestrator: No API key');
-    return;
-  }
-
-  try {
-    console.log('[Authenticall] Initializing analysis orchestrator...');
-    
-    analysisOrchestrator = new AnalysisOrchestrator(extensionState.settings);
-    await analysisOrchestrator.initialize();
-    analysisOrchestrator.start();
-    
-    console.log('[Authenticall] Analysis orchestrator initialized and started');
-  } catch (error) {
-    console.error('[Authenticall] Failed to initialize analysis orchestrator:', error);
-    analysisOrchestrator = null;
-  }
-}
-
-/**
- * Stop Analysis Orchestrator
- */
-async function stopAnalysisOrchestrator(): Promise<void> {
-  if (analysisOrchestrator) {
-    console.log('[Authenticall] Stopping analysis orchestrator...');
-    await analysisOrchestrator.stop();
-    analysisOrchestrator = null;
-    console.log('[Authenticall] Analysis orchestrator stopped');
-  }
-}
 
 /**
  * Set up event listeners
@@ -189,47 +187,13 @@ function setupEventListeners(): void {
   });
 
   // Handle messages (including from content scripts)
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    handleRuntimeMessage(message, sender).then(sendResponse);
-    return true; // Async response
-  });
+  // Note: MessageHandler registers its own listener in its initialize() method
+  // which is sufficient. We don't need a second listener here.
 }
 
 /**
  * Handle runtime messages (Phase 4 integration)
  */
-async function handleRuntimeMessage(
-  message: any,
-  _sender: chrome.runtime.MessageSender
-): Promise<any> {
-  // Handle Frame Captured
-  if (message.type === MessageType.FRAME_CAPTURED && analysisOrchestrator) {
-    await analysisOrchestrator.handleFrameCaptured(message);
-    return { success: true };
-  }
-
-  // Handle Transcript Captured
-  if (message.type === MessageType.TRANSCRIPT_CAPTURED && analysisOrchestrator) {
-    await analysisOrchestrator.handleTranscriptCaptured(message);
-    return { success: true };
-  }
-
-  // Handle Start Monitoring
-  if (message.type === MessageType.START_MONITORING) {
-    // Initialize orchestrator when monitoring starts
-    if (!analysisOrchestrator) {
-      await initializeAnalysisOrchestrator();
-    }
-  }
-
-  // Handle Stop Monitoring
-  if (message.type === MessageType.STOP_MONITORING) {
-    await stopAnalysisOrchestrator();
-  }
-
-  // All other messages handled by default handler
-  return { success: true };
-}
 
 /**
  * Handle first installation
@@ -281,7 +245,7 @@ function handleTabRemoved(tabId: number): void {
     delete extensionState.monitoring.currentSession;
     
     // Stop orchestrator when session ends
-    stopAnalysisOrchestrator();
+    messageHandler.stopSession();
   }
 }
 
@@ -316,6 +280,4 @@ initialize();
 if (extensionState.settings.enableDebugMode) {
   // @ts-expect-error - Adding to globalThis for debugging
   globalThis.authenticallState = getExtensionState;
-  // @ts-expect-error - Adding to globalThis for debugging
-  globalThis.authenticallOrchestrator = () => analysisOrchestrator;
 }

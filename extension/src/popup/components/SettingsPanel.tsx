@@ -92,9 +92,8 @@ export function SettingsPanel({
                 onChange={(e) => onUpdateSetting('geminiModel', e.target.value)}
                 className="input"
               >
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended)</option>
-                <option value="gemini-3-flash-preview">Gemini 3 Flash Preview</option>
-                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                <option value="gemini-3-flash-preview">Gemini 3 Flash Preview (Recommended)</option>
+                <option value="gemini-3-pro-preview">Gemini 3 Pro Preview</option>
               </select>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Flash models are optimized for speed and efficiency

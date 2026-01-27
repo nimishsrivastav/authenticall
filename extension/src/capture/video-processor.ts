@@ -55,14 +55,25 @@ export class VideoProcessor {
       try {
         const elements = document.querySelectorAll<HTMLVideoElement>(selector);
         elements.forEach((el) => {
-          // Only add video elements that are playing
-          if (el.readyState >= 2 && !el.paused) {
+          // Include video elements that have some data loaded (readyState >= 1)
+          // or have valid dimensions (may be ready but paused)
+          if (el.readyState >= 1 || (el.videoWidth > 0 && el.videoHeight > 0)) {
             videoSet.add(el);
           }
         });
       } catch (error) {
         console.warn('[VideoProcessor] Failed to query selector:', selector, error);
       }
+    }
+
+    // Fallback: if no videos found with specific selectors, try generic video selector
+    if (videoSet.size === 0) {
+      const allVideos = document.querySelectorAll<HTMLVideoElement>('video');
+      allVideos.forEach((el) => {
+        if (el.readyState >= 1 || (el.videoWidth > 0 && el.videoHeight > 0)) {
+          videoSet.add(el);
+        }
+      });
     }
 
     this.videoElements = Array.from(videoSet);
@@ -95,11 +106,23 @@ export class VideoProcessor {
       return;
     }
 
+    // Refresh video elements if none available
+    if (this.videoElements.length === 0) {
+      this.findVideoElements();
+    }
+
     // Get the primary video (first in list, usually the main speaker)
     const videoElement = this.videoElements[0];
 
     if (!videoElement) {
-      console.warn('[VideoProcessor] No video elements available');
+      // This is expected when joining a meeting before video starts
+      console.debug('[VideoProcessor] No video elements available yet');
+      return;
+    }
+
+    // Verify the video element is still valid and has content
+    if (videoElement.readyState < 2 || videoElement.videoWidth === 0) {
+      console.debug('[VideoProcessor] Video element not ready for capture');
       return;
     }
 

@@ -31,7 +31,7 @@ export interface SettingsStore {
 
 const DEFAULT_SETTINGS: ExtensionSettings = {
   apiKey: '',
-  geminiModel: 'gemini-2.5-flash',
+  geminiModel: 'gemini-3-flash-preview',
   enableNotifications: true,
   notificationSound: true,
   trustThresholds: {
